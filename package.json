@@ -1,0 +1,24 @@
+{
+  "name": "node-jsonrpc2",
+  "version": "0.1.0",
+  "author": "draconisNoctis <mark.wecke@gmail.com>",
+  "description": "Simple JSON-RPC server for node http-server/express etc.",
+  "keywords": "jsonrpc, json-rpc, jsonrpc2, json-rpc2, rpc",
+  "homepage": "https://github.com/draconisNoctis/node-jsonrpc2",
+  "bugs": "https://github.com/draconisNoctis/node-jsonrpc2/issues",
+  "license": "MIT",
+  "main": "node-jsonrpc2.js",
+  "repository": {
+  	"type": "git",
+  	"url": "git@github.com:draconisNoctis/node-jsonrpc2.git"
+  },
+  "dependencies": {
+    "q": "^1.0.1"
+  },
+  "devDependencies": {
+    "jasmine-node": "^1.14.5"
+  },
+  "scripts": {
+  	"test": "jasmine-node tests"
+  }
+}
