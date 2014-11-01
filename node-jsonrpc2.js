@@ -1,7 +1,7 @@
 var Q = require('q');
 
 module.exports = jsonrpc2;
-function jsonrpc2(interfaces, adapter) {
+function jsonrpc2(handler, adapter) {
 	return function() {
 		var ctx = adapter.context.apply(null, arguments);
 
@@ -17,14 +17,14 @@ function jsonrpc2(interfaces, adapter) {
 		var promise;
 		if(Array.isArray(ctx.data)) {
 			promise = Q.all(ctx.data.map(function(data) { 
-				return handle(data, interfaces, ctx) 
+				return handle(data, handler, ctx) 
 			})).then(function(response) {
 				return response.filter(function(response) {
 					return !!response;
 				})
 			});
 		} else {
-			promise = Q.fcall(handle, ctx.data, interfaces, ctx);
+			promise = Q.fcall(handle, ctx.data, handler, ctx);
 		}
 
 		promise.then(function(response) {
@@ -35,13 +35,13 @@ function jsonrpc2(interfaces, adapter) {
 	
 }
 
-module.exports.http = function http(interfaces) {
-	return jsonrpc2(interfaces, {
-		context: function(req, res) {
+module.exports.http = function http(handler) {
+	return jsonrpc2(handler, {
+		context: function(req, res, data) {
 			return {
 				request: req,
 				response: res,
-				data: req.body
+				data: data || req.body
 			}
 		},
 		write: function(ctx, obj) {
@@ -52,7 +52,23 @@ module.exports.http = function http(interfaces) {
 	})
 }
 
-function handle(data, interfaces, ctx) {
+module.exports.ws = function ws(handler, write) {
+	return jsonrpc2(handler, {
+		context: function(ws, data) {
+			return {
+				websocket: ws,
+				data: data
+			}
+		},
+		write: write || function(ctx, obj) {
+			if(obj) {
+				ctx.websocket.send(JSON.stringify(obj));
+			}
+		}
+	})
+}
+
+function handle(data, handler, ctx) {
 	try {
 		if('2.0' !== data.jsonrpc) {
 			return data.id !== undefined ? error(-32600, 'Invalid Request', 'JSON RPC version is invalid or missing', data.id) : undefined;
@@ -63,16 +79,16 @@ function handle(data, interfaces, ctx) {
 		}
 
 		var method;
-		if('function' === typeof interfaces[data.method]) {
-			method = interfaces[data.method];
+		if('function' === typeof handler[data.method]) {
+			method = handler[data.method];
 		} else {
 			var index = data.method.lastIndexOf('.'),
 				namespace = -1 === index ? '' : data.method.substr(0, index),
 				methodName = -1 === index ? data.method : data.method.substr(index + 1);
 
-			if('object' === typeof interfaces[namespace] && 'function' === typeof interfaces[namespace][methodName]) {
+			if('object' === typeof handler[namespace] && 'function' === typeof handler[namespace][methodName]) {
 				method = function(params, ctx) {
-					return interfaces[namespace][methodName].call(interfaces[namespace], params, ctx);
+					return handler[namespace][methodName].call(handler[namespace], params, ctx);
 				}
 			}
 		}
